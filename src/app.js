@@ -6,6 +6,7 @@ import { applySecurityMiddleware } from './middleware/Security.middleware.js';
 
 
 const app = express();
+app.set("trust proxy", 1);
 
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
   .split(",")
