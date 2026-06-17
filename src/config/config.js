@@ -7,8 +7,7 @@ dotenvconfig();
 
 const REQUIRED_VARS = [
   "MONGO_URI",
-  "JWT_SECRET",
-  "RABBITMQ_URI",
+  "JWT_SECRET"
 ];
 
 const missing = REQUIRED_VARS.filter((key) => !process.env[key]);
@@ -23,7 +22,6 @@ if (missing.length > 0) {
 const _config = {
   MONGO_URI:        process.env.MONGO_URI,
   JWT_SECRET:       process.env.JWT_SECRET,
-  RABBITMQ_URI:     process.env.RABBITMQ_URI,
   PRODUCT_API_URL:  process.env.PRODUCT_API_URL || "http://localhost:3002/api/products",
 };
 
