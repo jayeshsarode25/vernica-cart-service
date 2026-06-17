@@ -1,6 +1,6 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import cors from 'cors'
+import cors from 'cors';
 import { applySecurityMiddleware } from './middleware/Security.middleware.js';
 
 
@@ -8,22 +8,19 @@ import { applySecurityMiddleware } from './middleware/Security.middleware.js';
 const app = express();
 app.set("trust proxy", 1);
 
-const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const allowedOrigins = [
+  "https://varnikaorganics.com",
+  "https://www.varnikaorganics.com",
+];
 
 app.use(
   cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error(`CORS blocked origin: ${origin}`));
-    },
+    origin: allowedOrigins,
     credentials: true,
   })
 );
-app.use(express.json());
 app.use(cookieParser());
+app.use(express.json());
 applySecurityMiddleware(app);
 
 
