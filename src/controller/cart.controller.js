@@ -2,21 +2,40 @@ import cartModel from "../model/cart.model.js";
 import { getProductById } from "../services/product.service.js";
 import { AppError, catchAsync } from "../utils/error.utils.js"; // ✅
 
-// ── helper to populate cart items via Products API ─────────────────
-const populateCartItems = async (cart) => {
-  const populatedItems = await Promise.all(
+// Enrich items.productId through the separate Product Service.
+const hydrateCartItems = async (cart) => {
+  const resolvedItems = await Promise.all(
     cart.items.map(async (item) => {
-      const product = await getProductById(item.productId.toString());
+      const storedProductId = item.productId.toString();
+      const product = await getProductById(storedProductId);
+
       return {
-        _id:       item._id,
-        quantity:  item.quantity,
-        productId: product, // full product object
+        storedProductId,
+        item: product
+          ? {
+              _id: item._id,
+              quantity: item.quantity,
+              productId: product,
+            }
+          : null,
       };
     })
   );
+
+  const missingProductIds = resolvedItems
+    .filter(({ item }) => !item)
+    .map(({ storedProductId }) => storedProductId);
+
+  if (missingProductIds.length > 0) {
+    await cartModel.updateOne(
+      { _id: cart._id },
+      { $pull: { items: { productId: { $in: missingProductIds } } } },
+    );
+  }
+
   return {
     ...cart.toObject(),
-    items: populatedItems,
+    items: resolvedItems.flatMap(({ item }) => (item ? [item] : [])),
   };
 };
 
@@ -32,7 +51,7 @@ export const getCart = catchAsync(async (req, res) => {
     return res.status(200).json({ cart: { items: [] } });
   }
 
-  const populatedCart = await populateCartItems(cart);
+  const populatedCart = await hydrateCartItems(cart);
   res.status(200).json({ cart: populatedCart });
 });
 
@@ -51,6 +70,13 @@ export const addItemToCart = catchAsync(async (req, res) => {
     throw new AppError("qty must be at least 1", 400);
   }
 
+  const product = await getProductById(productId);
+  if (!product) {
+    throw new AppError("Product not found", 404);
+  }
+
+  const storedProductId = product._id.toString();
+
   let cart = await cartModel.findOne({ user: userId });
 
   if (!cart) {
@@ -58,19 +84,19 @@ export const addItemToCart = catchAsync(async (req, res) => {
   }
 
   const existingItemIndex = cart.items.findIndex(
-    (item) => item.productId.toString() === productId.toString()
+    (item) => item.productId.toString() === storedProductId
   );
 
   if (existingItemIndex >= 0) {
     cart.items[existingItemIndex].quantity += Number(qty);
   } else {
-    cart.items.push({ productId, quantity: Number(qty) });
+    cart.items.push({ productId: storedProductId, quantity: Number(qty) });
   }
 
   await cart.save();
 
   const rawCart       = await cartModel.findOne({ user: userId });
-  const populatedCart = await populateCartItems(rawCart);
+  const populatedCart = await hydrateCartItems(rawCart);
 
   res.status(200).json({ message: "Item added to cart", cart: populatedCart });
 });
@@ -105,7 +131,7 @@ export const updateItemQuentity = catchAsync(async (req, res) => {
   await cart.save();
 
   const rawCart       = await cartModel.findOne({ user: userId });
-  const populatedCart = await populateCartItems(rawCart);
+  const populatedCart = await hydrateCartItems(rawCart);
 
   res.status(200).json({ cart: populatedCart });
 });
@@ -127,7 +153,7 @@ export const removeItemFromCart = catchAsync(async (req, res) => {
   );
 
   const rawCart       = await cartModel.findOne({ user: userId });
-  const populatedCart = await populateCartItems(rawCart);
+  const populatedCart = await hydrateCartItems(rawCart);
 
   res.status(200).json({ message: "Item removed from cart", cart: populatedCart });
 });

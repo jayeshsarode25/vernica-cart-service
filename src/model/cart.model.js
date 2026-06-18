@@ -8,7 +8,8 @@ const cartSchema = new mongoose.Schema({
     },
     items:[{
         productId:{
-            type:mongoose.Schema.Types.ObjectId, 
+            // Product belongs to a separate service/database. Store only its ID.
+            type:mongoose.Schema.Types.ObjectId,
             required: true
         },
         quantity:{
