@@ -9,6 +9,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 const allowedOrigins = [
+  "http://localhost:5173",
   "https://varnikaorganics.com",
   "https://www.varnikaorganics.com",
 ];
