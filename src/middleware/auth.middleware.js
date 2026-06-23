@@ -14,7 +14,8 @@ function getBearerToken(req) {
 
 export function createAuthMiddleware(role = ["user"]) {
   return function authMiddleware(req, res, next) {
-    const token = req.cookies?.token || getBearerToken(req);
+    const cookieToken = req.cookies?.token;
+    const token = cookieToken || getBearerToken(req);
 
     if (!token) {
       return res.status(401).json({
@@ -23,12 +24,13 @@ export function createAuthMiddleware(role = ["user"]) {
     }
 
     try {
-      const decoded = jwt.verify(token, config.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const userId = decoded.userId ?? decoded.id ?? decoded._id;
       const auth = {
+        hasTokenCookie: Boolean(cookieToken),
         userId,
         role: decoded.role,
-        authenticated: true,
+        authenticated: Boolean(decoded),
       };
 
       if (!role.includes(auth.role)) {
